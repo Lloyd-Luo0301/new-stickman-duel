@@ -1,6 +1,4 @@
-/* 火柴人决斗 · Cloudflare Worker 版联机服务器
- * 房间与转发逻辑与 node 版一致；所有房间放在同一个 Durable Object 里 */
-
+/* 火柴人决斗 · Cloudflare Worker 联机服务器（亚太节点） */
 import GAME_HTML from './index.html';
 
 const NET_VER = 7;
@@ -9,11 +7,13 @@ export default {
   async fetch(req, env) {
     const url = new URL(req.url);
     if (url.pathname === '/ws') {
-      const id = env.RELAY.idFromName('global');
-      return env.RELAY.get(id).fetch(req);
+      const id = env.RELAY.idFromName('stickman-apac-v2');
+      return env.RELAY.get(id, { locationHint: 'apac' }).fetch(req);
     }
     if (url.pathname === '/health') return new Response('ok');
-    return new Response(GAME_HTML, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' } });
+    return new Response(GAME_HTML, {
+      headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' }
+    });
   }
 };
 
@@ -67,7 +67,6 @@ export class Relay {
       ws.room = code; ws.slot = 1;
       this.rooms.set(code, { clients: [ws], chars: null, seed: 0, frame: 0, mode });
       send(ws, { type: 'joined', room: code, slot: 1, ver: NET_VER, mode });
-
     } else if (t === 'join') {
       if (ws.room) return;
       const code = String(msg.room || '').toUpperCase().trim();
@@ -83,7 +82,6 @@ export class Relay {
         send(ws, { type: 'start', c1: r.chars[0], c2: r.chars[1], seed: r.seed, mode: '1v1' });
         if (r.lastState) send(ws, { type: 'state', s: r.lastState });
       }
-
     } else if (t === 'pick') {
       const r = this.roomOf(ws); if (!r) return;
       r.picks = r.picks || {};
@@ -97,35 +95,29 @@ export class Relay {
       r.stateSent = true;
       r.clients.forEach((c) => send(c, { type: 'start', c1: r.chars[0], c2: r.chars[1], seed: r.seed, mode: '1v1' }));
       r.picks = null;
-
     } else if (t === 'ctl') {
       const r = this.roomOf(ws); if (!r || r.clients.length < 2) return;
       const other = r.clients.find((c) => c !== ws);
       if (other) send(other, { type: 'ctl', h: msg.h });
-
     } else if (t === 'in') {
       const r = this.roomOf(ws); if (!r || r.clients.length < 2) return;
       const other = r.clients.find((c) => c !== ws);
       if (other) send(other, { type: 'in', frame: msg.frame, inp: msg.inp });
-
     } else if (t === 'snap') {
       const r = this.roomOf(ws); if (!r || r.clients.length < 2) return;
       const other = r.clients.find((c) => c !== ws);
       if (other) send(other, { type: 'snap', st: msg.st });
-
     } else if (t === 'state') {
       const r = this.roomOf(ws); if (!r) return;
       const other = r.clients.find((c) => c !== ws);
       r.lastState = msg.s;
       if (other) send(other, { type: 'state', s: msg.s });
-
     } else if (t === 'again') {
       const r = this.roomOf(ws); if (!r) return;
       r.clients.forEach((c) => send(c, {
         type: 'again', c1: r.chars[0], c2: r.chars[1],
         seed: (Math.random() * 1e9) | 0, mode: '1v1'
       }));
-
     } else if (t === 'leave') {
       this.handleClose(ws);
     }
