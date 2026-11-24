@@ -1,9 +1,9 @@
-name = "stickman-duel"
-main = "src/worker.js"
+name = "new-stickman-duel"
+main = "worker.js"
 compatibility_date = "2024-11-01"
 
 [assets]
-directory = "./public"
+directory = "."
 
 [[durable_objects.bindings]]
 name = "RELAY"
