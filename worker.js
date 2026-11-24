@@ -1,6 +1,8 @@
 /* 火柴人决斗 · Cloudflare Worker 版联机服务器
  * 房间与转发逻辑与 node 版一致；所有房间放在同一个 Durable Object 里 */
 
+import GAME_HTML from './index.html';
+
 const NET_VER = 7;
 
 export default {
@@ -11,7 +13,7 @@ export default {
       return env.RELAY.get(id).fetch(req);
     }
     if (url.pathname === '/health') return new Response('ok');
-    return env.ASSETS.fetch(req);
+    return new Response(GAME_HTML, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' } });
   }
 };
 
